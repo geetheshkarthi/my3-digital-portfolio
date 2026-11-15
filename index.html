@@ -3359,24 +3359,27 @@
 
           if (sd.type === 'quote') {
             const qFontSize = isPhone ? 18 : 22;
+            const qLines = Array.isArray(sd.quote) ? sd.quote : [sd.quote];
+            const lineH = qFontSize * 1.35;
+            const qH_px = Math.round(qLines.length * lineH + 8);
+
             const qCanvas = document.createElement('canvas');
             const qCtx = qCanvas.getContext('2d', { willReadFrequently: true });
             qCanvas.width = 680 * dpr;
-            qCanvas.height = 140 * dpr;
+            qCanvas.height = qH_px * dpr;
             qCtx.scale(dpr, dpr);
             qCtx.font = `italic 300 ${qFontSize}px Newsreader, serif`;
             qCtx.fillStyle = '#ededeb';
             qCtx.textAlign = 'left';
             qCtx.textBaseline = 'top';
 
-            const qLines = Array.isArray(sd.quote) ? sd.quote : [sd.quote];
             qLines.forEach((ql, qi) => {
-              qCtx.fillText(ql, 0, qi * (qFontSize * 1.3));
+              qCtx.fillText(ql, 0, qi * lineH + 4);
             });
 
             const qTex = new THREE.CanvasTexture(qCanvas);
             const qMesh = new THREE.Mesh(
-              new THREE.PlaneGeometry(this.pxToWorldZ8(680), this.pxToWorldZ8(140)),
+              new THREE.PlaneGeometry(this.pxToWorldZ8(680), this.pxToWorldZ8(qH_px)),
               new THREE.MeshBasicMaterial({ map: qTex, transparent: true })
             );
             this.textGroup.add(qMesh);
@@ -3399,10 +3402,11 @@
             );
             this.textGroup.add(authMesh);
 
-            const yQuote = isTop ? (baseOffsetFromCenter + 45) : -(baseOffsetFromCenter + 15);
-            const yAuth = isTop ? (baseOffsetFromCenter + 10) : -(baseOffsetFromCenter + 70);
+            // Place quote close above the author attribution (-- texts)
+            const yAuth = isTop ? (baseOffsetFromCenter + 10) : -(baseOffsetFromCenter + 55);
+            const yQuote = yAuth + 26 + qH_px / 2;
 
-            const lObj1 = { mesh: qMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yQuote), height_world: this.pxToWorldZ8(100), isAboveBot: isTop, orderFromCenter: 1, currentShiftY: 0 };
+            const lObj1 = { mesh: qMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yQuote), height_world: this.pxToWorldZ8(qH_px), isAboveBot: isTop, orderFromCenter: 1, currentShiftY: 0 };
             const lObj2 = { mesh: authMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yAuth), height_world: this.pxToWorldZ8(30), isAboveBot: isTop, orderFromCenter: 2, currentShiftY: 0 };
             this.textLines.push(lObj1, lObj2);
             stopObj.lines.push(lObj1, lObj2);
