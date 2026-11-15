@@ -1204,11 +1204,12 @@
       about: { el: document.getElementById('view-about'), inited: false, instance: null },
       work: { el: document.getElementById('view-work'), inited: false, instance: null }
     };
+    window.views = views;
 
     let activeView = 'gallery';
 
     let H = Math.max(500, window.innerHeight * 1.0);
-    let aboutDist = H * 1.6;
+    let aboutDist = H * 2.8;
     let ribbonDist = H * 3.6;
     let S0 = 0;
     let S1 = H;
@@ -1222,10 +1223,11 @@
       maxScrollY: S4,
       progress: 0
     };
+    window.scrollState = scrollState;
 
     function updateMaxScroll() {
       H = Math.max(500, window.innerHeight * 1.0);
-      aboutDist = H * 1.6;
+      aboutDist = H * 2.8;
       ribbonDist = H * 3.6;
       S0 = 0;
       S1 = H;
@@ -3048,14 +3050,14 @@
 
         const lastBlock = this.stops[this.stops.length - 1];
         // Section 2 ends exactly at this frame where Stop 9 (Contact Us) and Stop 8 (Quote) are centered & displayed
-        this.maxTrackScrollX = Math.max(0, lastBlock.baseX - (isPhone ? 0 : 20));
+        this.maxTrackScrollX = Math.max(0, lastBlock.baseX - (isPhone ? 0 : 220));
         this.trackLengthPx = this.maxTrackScrollX;
         this.trackLengthWorld = this.pxToWorldZ8(this.trackLengthPx);
       }
 
       buildHeadlinePlanes(w, isPhone, dpr) {
-        const headlineFontSize = isPhone ? 62 : 75;
-        const subFontSize = isPhone ? 12 : 14;
+        const headlineFontSize = isPhone ? Math.min(26, Math.max(18, Math.round(w * 0.058))) : Math.min(64, Math.max(44, Math.round(w * 0.042)));
+        const subFontSize = isPhone ? 11 : 13;
 
         const l1 = 'Transforming ambitious brands into';
         const l2 = 'fast, high-performance and scalable';
@@ -3290,27 +3292,28 @@
           }
         ];
 
-        let currX_px = w / 2 + (isPhone ? 70 : 200);
+        let currX_px = isPhone ? (w * 0.82) : Math.max(w * 0.72, 850);
         const stops = [];
 
         stopsData.forEach((sd, stopIdx) => {
           const isTop = sd.top;
-          const blockW_px = isPhone ? Math.min(w - 56, 320) : 400;
+          const BLOCK_W = isPhone ? Math.min(w - 48, 320) : 480;
           const stopObj = {
             index: stopIdx,
             baseX: currX_px,
-            widthPx: blockW_px,
+            widthPx: BLOCK_W,
             lines: []
           };
 
-          const baseOffsetFromCenter = isPhone ? 64 : 78;
+          const baseOffsetFromCenter = isPhone ? 35 : 45;
 
           if (sd.type === 'quote') {
-            const qFontSize = isPhone ? 22 : 30;
+            const Q_BLOCK_W = isPhone ? Math.min(w - 48, 340) : 480;
+            const qFontSize = isPhone ? 20 : 25;
             const qCanvas = document.createElement('canvas');
             const qCtx = qCanvas.getContext('2d', { willReadFrequently: true });
-            qCanvas.width = 680 * dpr;
-            qCanvas.height = 140 * dpr;
+            qCanvas.width = Q_BLOCK_W * dpr;
+            qCanvas.height = 70 * dpr;
             qCtx.scale(dpr, dpr);
             qCtx.font = `italic 300 ${qFontSize}px Newsreader, serif`;
             qCtx.fillStyle = '#ededeb';
@@ -3319,20 +3322,21 @@
 
             const qLines = Array.isArray(sd.quote) ? sd.quote : [sd.quote];
             qLines.forEach((ql, qi) => {
-              qCtx.fillText(ql, 0, qi * (qFontSize * 1.25));
+              qCtx.fillText(ql, 0, qi * (qFontSize * 1.3));
             });
 
             const qTex = new THREE.CanvasTexture(qCanvas);
             const qMesh = new THREE.Mesh(
-              new THREE.PlaneGeometry(this.pxToWorldZ8(680), this.pxToWorldZ8(140)),
+              new THREE.PlaneGeometry(this.pxToWorldZ8(Q_BLOCK_W), this.pxToWorldZ8(70)),
               new THREE.MeshBasicMaterial({ map: qTex, transparent: true })
             );
+            qMesh.position.z = -8;
             this.textGroup.add(qMesh);
 
             const authCanvas = document.createElement('canvas');
             const authCtx = authCanvas.getContext('2d', { willReadFrequently: true });
-            authCanvas.width = 380 * dpr;
-            authCanvas.height = 30 * dpr;
+            authCanvas.width = Q_BLOCK_W * dpr;
+            authCanvas.height = 24 * dpr;
             authCtx.scale(dpr, dpr);
             authCtx.font = '500 12px Geist, sans-serif';
             authCtx.fillStyle = '#8a8a88';
@@ -3342,23 +3346,24 @@
 
             const authTex = new THREE.CanvasTexture(authCanvas);
             const authMesh = new THREE.Mesh(
-              new THREE.PlaneGeometry(this.pxToWorldZ8(380), this.pxToWorldZ8(30)),
+              new THREE.PlaneGeometry(this.pxToWorldZ8(Q_BLOCK_W), this.pxToWorldZ8(24)),
               new THREE.MeshBasicMaterial({ map: authTex, transparent: true })
             );
+            authMesh.position.z = -8;
             this.textGroup.add(authMesh);
 
-            const yQuote = isTop ? (baseOffsetFromCenter + 50) : -(baseOffsetFromCenter + 20);
-            const yAuth = isTop ? (baseOffsetFromCenter + 10) : -(baseOffsetFromCenter + 80);
+            const yQuote = isTop ? (baseOffsetFromCenter + 65) : -(baseOffsetFromCenter + 15);
+            const yAuth = isTop ? (baseOffsetFromCenter + 15) : -(baseOffsetFromCenter + 65);
 
-            const lObj1 = { mesh: qMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yQuote), height_world: this.pxToWorldZ8(100), isAboveBot: isTop, orderFromCenter: 1, currentShiftY: 0 };
-            const lObj2 = { mesh: authMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yAuth), height_world: this.pxToWorldZ8(30), isAboveBot: isTop, orderFromCenter: 2, currentShiftY: 0 };
+            const lObj1 = { mesh: qMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yQuote), height_world: this.pxToWorldZ8(70), isAboveBot: isTop, orderFromCenter: 1, currentShiftY: 0 };
+            const lObj2 = { mesh: authMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yAuth), height_world: this.pxToWorldZ8(24), isAboveBot: isTop, orderFromCenter: 2, currentShiftY: 0 };
             this.textLines.push(lObj1, lObj2);
             stopObj.lines.push(lObj1, lObj2);
 
           } else {
             const hCanvas = document.createElement('canvas');
             const hCtx = hCanvas.getContext('2d', { willReadFrequently: true });
-            hCanvas.width = 440 * dpr;
+            hCanvas.width = BLOCK_W * dpr;
             hCanvas.height = 24 * dpr;
             hCtx.scale(dpr, dpr);
             hCtx.font = '500 12px Geist, sans-serif';
@@ -3369,12 +3374,13 @@
 
             const hTex = new THREE.CanvasTexture(hCanvas);
             const hMesh = new THREE.Mesh(
-              new THREE.PlaneGeometry(this.pxToWorldZ8(440), this.pxToWorldZ8(24)),
+              new THREE.PlaneGeometry(this.pxToWorldZ8(BLOCK_W), this.pxToWorldZ8(24)),
               new THREE.MeshBasicMaterial({ map: hTex, transparent: true })
             );
+            hMesh.position.z = -8;
             this.textGroup.add(hMesh);
 
-            const headY_px = isTop ? (baseOffsetFromCenter + 120) : -(baseOffsetFromCenter + 10);
+            const headY_px = isTop ? (baseOffsetFromCenter + 75) : -(baseOffsetFromCenter + 15);
             const headLineObj = { mesh: hMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(headY_px), height_world: this.pxToWorldZ8(24), isAboveBot: isTop, orderFromCenter: 0, currentShiftY: 0 };
             this.textLines.push(headLineObj);
             stopObj.lines.push(headLineObj);
@@ -3387,11 +3393,11 @@
 
               const c = document.createElement('canvas');
               const cx = c.getContext('2d', { willReadFrequently: true });
-              c.width = 540 * dpr;
+              c.width = BLOCK_W * dpr;
               c.height = 36 * dpr;
               cx.scale(dpr, dpr);
 
-              cx.font = sd.font ? `${sd.font}, serif` : '300 22px Newsreader, serif';
+              cx.font = sd.font ? `${sd.font}, serif` : '300 20px Newsreader, serif';
               cx.fillStyle = isMute ? '#8a8a88' : '#ededeb';
               cx.textAlign = 'left';
               cx.textBaseline = 'top';
@@ -3399,12 +3405,13 @@
 
               const tex = new THREE.CanvasTexture(c);
               const m = new THREE.Mesh(
-                new THREE.PlaneGeometry(this.pxToWorldZ8(540), this.pxToWorldZ8(36)),
+                new THREE.PlaneGeometry(this.pxToWorldZ8(BLOCK_W), this.pxToWorldZ8(36)),
                 new THREE.MeshBasicMaterial({ map: tex, transparent: true })
               );
+              m.position.z = -8;
               this.textGroup.add(m);
 
-              const lineY_px = isTop ? (baseOffsetFromCenter + 90 - lIdx * 28) : -(baseOffsetFromCenter + 40 + lIdx * 28);
+              const lineY_px = isTop ? (baseOffsetFromCenter + 52 - lIdx * 25) : -(baseOffsetFromCenter + 38 + lIdx * 25);
               const lineObj = {
                 mesh: m,
                 baseX_px: currX_px,
@@ -3422,9 +3429,7 @@
 
           stops.push(stopObj);
 
-          const advance_px = isPhone
-            ? (160 + 60)
-            : (Math.max(0.62 * blockW_px, 240) + 100);
+          const advance_px = isPhone ? 280 : Math.max(w * 0.32, 440);
           currX_px += advance_px;
         });
 
@@ -3487,11 +3492,9 @@
         let hasHoveredLink = false;
         linkLines.forEach(l => {
           const isHit = linkHits.some(h => h.object === l.mesh);
+          l.isHovered = isHit;
           if (isHit) {
             hasHoveredLink = true;
-            gsap.to(l.mesh.material, { opacity: 0.5, duration: 0.55 });
-          } else {
-            gsap.to(l.mesh.material, { opacity: 1.0, duration: 0.55 });
           }
         });
 
@@ -3563,11 +3566,49 @@
 
         this.trackScrollX += (this.targetTrackScrollX - this.trackScrollX) * 0.15;
 
-        // Linear track: exactly ends at Stop 9 (Contact Us) & Stop 8 (Quote)
+        // Smooth headline fade out as user scrolls so it never overlaps or clips on the left
+        const headlineFade = Math.max(0, 1 - this.trackScrollX / 280);
+        if (this.headlineObj) {
+          this.headlineObj.forEach(line => {
+            if (line.mesh && line.mesh.material) {
+              line.mesh.material.opacity = headlineFade;
+              line.mesh.visible = headlineFade > 0.001;
+            }
+          });
+        }
+
+        // Position text lines along track with soft edge fading
+        const halfW = (this.W || window.innerWidth) / 2;
         this.textLines.forEach(line => {
+          if (line.isHeadline) {
+            // Gentle subtle drift left as it dissolves, keeping full words visible
+            const driftX = -this.trackScrollX * 0.35;
+            line.mesh.position.x = this.pxToWorldZ8(driftX);
+            line.mesh.position.y = line.baseY_world;
+            return;
+          }
           const relX_px = line.baseX_px - this.trackScrollX;
           line.mesh.position.x = this.pxToWorldZ8(relX_px);
           line.mesh.position.y = line.baseY_world;
+
+          // Smooth edge fading to prevent harsh border clipping
+          let opacity = 1.0;
+          if (relX_px < -halfW * 0.38) {
+            const fadeStart = -halfW * 0.38;
+            const fadeEnd = -halfW * 0.78;
+            opacity = Math.max(0, Math.min(1, (relX_px - fadeEnd) / (fadeStart - fadeEnd)));
+          } else if (relX_px > halfW * 0.68) {
+            const fadeStart = halfW * 1.02;
+            const fadeEnd = halfW * 0.68;
+            opacity = Math.max(0, Math.min(1, (fadeStart - relX_px) / (fadeStart - fadeEnd)));
+          }
+          if (line.link && line.isHovered) {
+            opacity *= 0.55;
+          }
+          if (line.mesh && line.mesh.material) {
+            line.mesh.material.opacity = opacity;
+            line.mesh.visible = opacity > 0.01;
+          }
         });
       }
     }
