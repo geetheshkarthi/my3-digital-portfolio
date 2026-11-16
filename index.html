@@ -280,6 +280,31 @@
       pointer-events: none;
       z-index: 13;
     }
+    @media (max-width: 640px) {
+      #view-work .hl {
+        font-size: clamp(26px, 7.8vw, 36px);
+        letter-spacing: -0.035em;
+      }
+      #ribbon-l1 {
+        top: calc(50% - 2.1em);
+      }
+      #ribbon-l2 {
+        top: calc(50% + 1.15em);
+      }
+      #ribbon-l1 span {
+        margin-right: 0;
+      }
+      #ribbon-l2 span {
+        margin-left: 0;
+      }
+      #ribbon-cap {
+        width: 82vw;
+        max-width: 270px;
+        font-size: 10px;
+        line-height: 1.4;
+        letter-spacing: 0.04em;
+      }
+    }
     #ribbon-glow {
       position: absolute;
       left: 0; right: 0; top: 0;
@@ -1114,9 +1139,9 @@
     </a>
   </div>
 
-  <!-- APPLICATION SCRIPT -->
   <script type="module">
     import * as THREE from 'three';
+    window.THREE = THREE;
 
     // -------------------------------------------------------------
     // DATA SPECIFICATION (All 30 items)
@@ -2964,8 +2989,11 @@
         const out = t => 1 - Math.pow(1 - t, 3);
         const span = (p, a, b) => clamp((p - a) / (b - a));
 
+        const isMobile = this.W <= 640;
         const rise = 1 - out(span(pp, 0, 0.12));
-        const run = mix(-50, 76, span(pp, 0, 0.58));
+        const run = isMobile
+          ? mix(-6, 10, span(pp, 0, 0.58))
+          : mix(-50, 76, span(pp, 0, 0.58));
         if (this.l1) this.l1.style.transform = `translate3d(${run}vw,${rise * 34}vh,0)`;
         if (this.l2) this.l2.style.transform = `translate3d(${-run}vw,${rise * 34}vh,0)`;
 
@@ -3144,8 +3172,34 @@
         this.trackLengthWorld = this.pxToWorldZ8(this.trackLengthPx);
       }
 
+      rebuild() {
+        if (!this.textGroup) return;
+        while (this.textGroup.children.length > 0) {
+          const obj = this.textGroup.children[0];
+          this.textGroup.remove(obj);
+          if (obj.geometry) obj.geometry.dispose();
+          if (obj.material) {
+            if (obj.material.map) obj.material.map.dispose();
+            obj.material.dispose();
+          }
+        }
+        this.textLines = [];
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const isPhone = w <= 640;
+        const dpr = Math.min(window.devicePixelRatio, 2);
+        const visH_z8 = 2 * 21 * Math.tan((45 / 2) * (Math.PI / 180));
+        this.pxToWorldZ8 = (px) => (px / h) * visH_z8;
+        this.headlineObj = this.buildHeadlinePlanes(w, isPhone, dpr);
+        this.stops = this.buildTenStops(w, isPhone, dpr);
+        const lastBlock = this.stops[this.stops.length - 1];
+        this.maxTrackScrollX = Math.max(0, lastBlock.baseX - (isPhone ? 0 : 20));
+        this.trackLengthPx = this.maxTrackScrollX;
+        this.trackLengthWorld = this.pxToWorldZ8(this.trackLengthPx);
+      }
+
       buildHeadlinePlanes(w, isPhone, dpr) {
-        const headlineFontSize = isPhone ? 44 : 54;
+        const headlineFontSize = isPhone ? Math.min(22, Math.max(18, Math.round(w * 0.052))) : 54;
         const subFontSize = isPhone ? 11 : 12;
 
         const l1 = 'Transforming ambitious brands into';
@@ -3160,8 +3214,8 @@
           { text: lSub, isSub: true }
         ];
 
-        const lineStep = headlineFontSize * 1.15;
-        const totalHeadlineH = lineStep * 2 + headlineFontSize + 28 + subFontSize;
+        const lineStep = headlineFontSize * (isPhone ? 1.25 : 1.15);
+        const totalHeadlineH = lineStep * 2 + headlineFontSize + (isPhone ? 22 : 28) + subFontSize;
         const startY_px = totalHeadlineH / 2 - headlineFontSize / 2;
 
         const headlineLineObjs = [];
@@ -3169,14 +3223,15 @@
         lines.forEach((lineData, idx) => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          const cH = (lineData.isSub ? 40 : 100);
-          canvas.width = (w + 100) * dpr;
+          const cH = lineData.isSub ? (isPhone ? 32 : 40) : (isPhone ? Math.round(headlineFontSize * 1.5) : 100);
+          const cW = w + (isPhone ? 20 : 100);
+          canvas.width = cW * dpr;
           canvas.height = cH * dpr;
           ctx.scale(dpr, dpr);
 
           let posY_px = startY_px - idx * lineStep;
           if (lineData.isSub) {
-            posY_px = startY_px - 2 * lineStep - headlineFontSize - 28;
+            posY_px = startY_px - 2 * lineStep - headlineFontSize - (isPhone ? 20 : 28);
           }
 
           let northfoldOffset = null;
@@ -3186,14 +3241,14 @@
             ctx.fillStyle = '#ededeb';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(lineData.text, (w + 100) / 2, cH / 2);
+            ctx.fillText(lineData.text, cW / 2, cH / 2);
 
             // Compute brand bounds for hover effect
             const prefixW = ctx.measureText('My3 Digital® · ').width;
             const targetW = ctx.measureText('Hyderabad & Bangalore').width;
             const fullW = ctx.measureText(lineData.text).width;
-            const startX = ((w + 100) - fullW) / 2 + prefixW;
-            northfoldOffset = { startX, targetW, width: (w + 100) };
+            const startX = (cW - fullW) / 2 + prefixW;
+            northfoldOffset = { startX, targetW, width: cW };
           } else if (lineData.isTrademark) {
             ctx.font = `300 ${headlineFontSize}px Newsreader, serif`;
             ctx.fillStyle = '#ededeb';
@@ -3201,26 +3256,26 @@
             ctx.textBaseline = 'middle';
 
             const wMotion = ctx.measureText('Websites').width;
-            const tmFontSize = (w <= 1024 ? 16 : 24);
+            const tmFontSize = isPhone ? Math.round(headlineFontSize * 0.45) : (w <= 1024 ? 16 : 24);
             ctx.font = `400 ${tmFontSize}px Geist, sans-serif`;
             const wTM = ctx.measureText('™').width;
             ctx.font = `300 ${headlineFontSize}px Newsreader, serif`;
             const wRest = ctx.measureText(' that actually deliver.').width;
 
-            const fullW = wMotion + 8 + wTM + wRest;
-            const startX = ((w + 100) - fullW) / 2;
+            const fullW = wMotion + (isPhone ? 4 : 8) + wTM + wRest;
+            const startX = (cW - fullW) / 2;
 
             ctx.fillText('Websites', startX, cH / 2);
             ctx.font = `400 ${tmFontSize}px Geist, sans-serif`;
-            ctx.fillText('™', startX + wMotion + 8, cH / 2 - 0.2 * headlineFontSize);
+            ctx.fillText('™', startX + wMotion + (isPhone ? 4 : 8), cH / 2 - 0.2 * headlineFontSize);
             ctx.font = `300 ${headlineFontSize}px Newsreader, serif`;
-            ctx.fillText(' that actually deliver.', startX + wMotion + 8 + wTM, cH / 2);
+            ctx.fillText(' that actually deliver.', startX + wMotion + (isPhone ? 4 : 8) + wTM, cH / 2);
           } else {
             ctx.font = `300 ${headlineFontSize}px Newsreader, serif`;
             ctx.fillStyle = '#ededeb';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(lineData.text, (w + 100) / 2, cH / 2);
+            ctx.fillText(lineData.text, cW / 2, cH / 2);
           }
 
           const tex = new THREE.CanvasTexture(canvas);
@@ -3228,7 +3283,7 @@
           tex.magFilter = THREE.LinearFilter;
           tex.generateMipmaps = false;
 
-          const planeW = this.pxToWorldZ8(w + 100);
+          const planeW = this.pxToWorldZ8(cW);
           const planeH = this.pxToWorldZ8(cH);
           const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
           const mesh = new THREE.Mesh(new THREE.PlaneGeometry(planeW, planeH), mat);
@@ -3244,7 +3299,7 @@
             const hH = this.pxToWorldZ8(subFontSize + 8);
             const hMat = new THREE.MeshBasicMaterial({ color: 0x0c0c0d, transparent: true, opacity: 0.0 });
             hoverMesh = new THREE.Mesh(new THREE.PlaneGeometry(hW, hH), hMat);
-            const centerDiffPx = (northfoldOffset.startX + northfoldOffset.targetW / 2) - (w + 100) / 2;
+            const centerDiffPx = (northfoldOffset.startX + northfoldOffset.targetW / 2) - cW / 2;
             hoverMesh.position.set(this.pxToWorldZ8(centerDiffPx), 0, 0.1);
             mesh.add(hoverMesh);
             this.northfoldHoverMesh = hoverMesh;
@@ -3309,7 +3364,9 @@
           {
             type: 'quote',
             top: false,
-            quote: '“A website should feel fast, purposeful, and genuinely effective.”',
+            quote: isPhone
+              ? ['“A website should feel fast, purposeful,', 'and genuinely effective.”']
+              : '“A website should feel fast, purposeful, and genuinely effective.”',
             author: '— Pravallika Pullepu, Founder'
           },
           {
@@ -3381,12 +3438,12 @@
           }
         ];
 
-        let currX_px = w / 2 + (isPhone ? 70 : 200);
+        const blockW_px = isPhone ? Math.min(w - 48, 310) : 400;
+        let currX_px = isPhone ? (w + 40) : (w / 2 + 200);
         const stops = [];
 
         stopsData.forEach((sd, stopIdx) => {
           const isTop = sd.top;
-          const blockW_px = isPhone ? Math.min(w - 56, 320) : 400;
           const stopObj = {
             index: stopIdx,
             baseX: currX_px,
@@ -3394,17 +3451,19 @@
             lines: []
           };
 
-          const baseOffsetFromCenter = isPhone ? 50 : 60;
+          const baseOffsetFromCenter = isPhone ? 48 : 60;
 
           if (sd.type === 'quote') {
-            const qFontSize = isPhone ? 18 : 22;
+            const qFontSize = isPhone ? 16 : 22;
             const qLines = Array.isArray(sd.quote) ? sd.quote : [sd.quote];
-            const lineH = qFontSize * 1.35;
-            const qH_px = Math.round(qLines.length * lineH + 8);
+            const lineH = Math.round(qFontSize * 1.35);
+            const qH_px = Math.round(qLines.length * lineH + 10);
+            const qW_px = isPhone ? blockW_px : 680;
+            const authW_px = isPhone ? blockW_px : 380;
 
             const qCanvas = document.createElement('canvas');
             const qCtx = qCanvas.getContext('2d', { willReadFrequently: true });
-            qCanvas.width = 680 * dpr;
+            qCanvas.width = qW_px * dpr;
             qCanvas.height = qH_px * dpr;
             qCtx.scale(dpr, dpr);
             qCtx.font = `italic 300 ${qFontSize}px Newsreader, serif`;
@@ -3418,17 +3477,19 @@
 
             const qTex = new THREE.CanvasTexture(qCanvas);
             const qMesh = new THREE.Mesh(
-              new THREE.PlaneGeometry(this.pxToWorldZ8(680), this.pxToWorldZ8(qH_px)),
+              new THREE.PlaneGeometry(this.pxToWorldZ8(qW_px), this.pxToWorldZ8(qH_px)),
               new THREE.MeshBasicMaterial({ map: qTex, transparent: true })
             );
+            qMesh.position.z = -8;
             this.textGroup.add(qMesh);
 
             const authCanvas = document.createElement('canvas');
             const authCtx = authCanvas.getContext('2d', { willReadFrequently: true });
-            authCanvas.width = 380 * dpr;
-            authCanvas.height = 30 * dpr;
+            const authH_px = isPhone ? 22 : 30;
+            authCanvas.width = authW_px * dpr;
+            authCanvas.height = authH_px * dpr;
             authCtx.scale(dpr, dpr);
-            authCtx.font = '500 12px Geist, sans-serif';
+            authCtx.font = `${isPhone ? '400 11px' : '500 12px'} Geist, sans-serif`;
             authCtx.fillStyle = '#8a8a88';
             authCtx.textAlign = 'left';
             authCtx.textBaseline = 'top';
@@ -3436,27 +3497,32 @@
 
             const authTex = new THREE.CanvasTexture(authCanvas);
             const authMesh = new THREE.Mesh(
-              new THREE.PlaneGeometry(this.pxToWorldZ8(380), this.pxToWorldZ8(30)),
+              new THREE.PlaneGeometry(this.pxToWorldZ8(authW_px), this.pxToWorldZ8(authH_px)),
               new THREE.MeshBasicMaterial({ map: authTex, transparent: true })
             );
+            authMesh.position.z = -8;
             this.textGroup.add(authMesh);
 
             // Place quote close above the author attribution (-- texts)
-            const yAuth = isTop ? (baseOffsetFromCenter + 10) : -(baseOffsetFromCenter + 55);
-            const yQuote = yAuth + 26 + qH_px / 2;
+            const yAuth = isTop ? (baseOffsetFromCenter + 10) : -(baseOffsetFromCenter + (isPhone ? 40 : 55));
+            const yQuote = yAuth + (isPhone ? 20 : 26) + qH_px / 2;
 
             const lObj1 = { mesh: qMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yQuote), height_world: this.pxToWorldZ8(qH_px), isAboveBot: isTop, orderFromCenter: 1, currentShiftY: 0 };
-            const lObj2 = { mesh: authMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yAuth), height_world: this.pxToWorldZ8(30), isAboveBot: isTop, orderFromCenter: 2, currentShiftY: 0 };
+            const lObj2 = { mesh: authMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yAuth), height_world: this.pxToWorldZ8(authH_px), isAboveBot: isTop, orderFromCenter: 2, currentShiftY: 0 };
             this.textLines.push(lObj1, lObj2);
             stopObj.lines.push(lObj1, lObj2);
 
           } else {
+            const hW_px = isPhone ? blockW_px : 440;
+            const lineW_px = isPhone ? blockW_px : 540;
+
             const hCanvas = document.createElement('canvas');
             const hCtx = hCanvas.getContext('2d', { willReadFrequently: true });
-            hCanvas.width = 440 * dpr;
-            hCanvas.height = 24 * dpr;
+            const hH_px = isPhone ? 20 : 24;
+            hCanvas.width = hW_px * dpr;
+            hCanvas.height = hH_px * dpr;
             hCtx.scale(dpr, dpr);
-            hCtx.font = '500 12px Geist, sans-serif';
+            hCtx.font = `${isPhone ? '400 11px' : '500 12px'} Geist, sans-serif`;
             hCtx.fillStyle = '#8a8a88';
             hCtx.textAlign = 'left';
             hCtx.textBaseline = 'top';
@@ -3464,17 +3530,22 @@
 
             const hTex = new THREE.CanvasTexture(hCanvas);
             const hMesh = new THREE.Mesh(
-              new THREE.PlaneGeometry(this.pxToWorldZ8(440), this.pxToWorldZ8(24)),
+              new THREE.PlaneGeometry(this.pxToWorldZ8(hW_px), this.pxToWorldZ8(hH_px)),
               new THREE.MeshBasicMaterial({ map: hTex, transparent: true })
             );
+            hMesh.position.z = -8;
             this.textGroup.add(hMesh);
 
-            const headY_px = isTop ? (baseOffsetFromCenter + 90) : -(baseOffsetFromCenter + 10);
-            const headLineObj = { mesh: hMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(headY_px), height_world: this.pxToWorldZ8(24), isAboveBot: isTop, orderFromCenter: 0, currentShiftY: 0 };
+            const headY_px = isTop ? (baseOffsetFromCenter + (isPhone ? 75 : 90)) : -(baseOffsetFromCenter + 10);
+            const headLineObj = { mesh: hMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(headY_px), height_world: this.pxToWorldZ8(hH_px), isAboveBot: isTop, orderFromCenter: 0, currentShiftY: 0 };
             this.textLines.push(headLineObj);
             stopObj.lines.push(headLineObj);
 
             const lineItems = sd.lines || [];
+            const bodyStep = isPhone ? 20 : 25;
+            const lineH_px = isPhone ? 26 : 36;
+            const bodyBaseTop = isTop ? (baseOffsetFromCenter + (isPhone ? 54 : 66)) : -(baseOffsetFromCenter + (isPhone ? 28 : 35));
+
             lineItems.forEach((li, lIdx) => {
               const textStr = typeof li === 'string' ? li : li.text;
               const isMute = typeof li === 'object' && li.mute;
@@ -3482,11 +3553,25 @@
 
               const c = document.createElement('canvas');
               const cx = c.getContext('2d', { willReadFrequently: true });
-              c.width = 540 * dpr;
-              c.height = 36 * dpr;
+              c.width = lineW_px * dpr;
+              c.height = lineH_px * dpr;
               cx.scale(dpr, dpr);
 
-              cx.font = sd.font ? `${sd.font}, serif` : '300 18px Newsreader, serif';
+              if (isPhone) {
+                if (sd.type === 'list') {
+                  cx.font = '400 13px Newsreader, serif';
+                } else if (sd.type === 'stats') {
+                  cx.font = '400 13px Geist, sans-serif';
+                } else if (sd.type === 'chapter') {
+                  cx.font = '300 13.5px Newsreader, serif';
+                } else if (sd.type === 'links') {
+                  cx.font = '400 13px Geist, sans-serif';
+                } else {
+                  cx.font = '300 14px Newsreader, serif';
+                }
+              } else {
+                cx.font = sd.font ? `${sd.font}, serif` : '300 18px Newsreader, serif';
+              }
               cx.fillStyle = isMute ? '#8a8a88' : '#ededeb';
               cx.textAlign = 'left';
               cx.textBaseline = 'top';
@@ -3494,17 +3579,18 @@
 
               const tex = new THREE.CanvasTexture(c);
               const m = new THREE.Mesh(
-                new THREE.PlaneGeometry(this.pxToWorldZ8(540), this.pxToWorldZ8(36)),
+                new THREE.PlaneGeometry(this.pxToWorldZ8(lineW_px), this.pxToWorldZ8(lineH_px)),
                 new THREE.MeshBasicMaterial({ map: tex, transparent: true })
               );
+              m.position.z = -8;
               this.textGroup.add(m);
 
-              const lineY_px = isTop ? (baseOffsetFromCenter + 66 - lIdx * 25) : -(baseOffsetFromCenter + 35 + lIdx * 25);
+              const lineY_px = bodyBaseTop - lIdx * bodyStep;
               const lineObj = {
                 mesh: m,
                 baseX_px: currX_px,
                 baseY_world: this.pxToWorldZ8(lineY_px),
-                height_world: this.pxToWorldZ8(36),
+                height_world: this.pxToWorldZ8(lineH_px),
                 isAboveBot: isTop,
                 orderFromCenter: lIdx + 1,
                 currentShiftY: 0,
@@ -3518,7 +3604,7 @@
           stops.push(stopObj);
 
           const advance_px = isPhone
-            ? (160 + 60)
+            ? (blockW_px + 70)
             : (Math.max(0.62 * blockW_px, 240) + 100);
           currX_px += advance_px;
         });
@@ -3548,6 +3634,10 @@
           this.camera.aspect = w / h;
           this.camera.updateProjectionMatrix();
           this.renderer.setSize(w, h);
+          clearTimeout(this._resizeTimer);
+          this._resizeTimer = setTimeout(() => {
+            this.rebuild();
+          }, 250);
         });
       }
 
@@ -3658,11 +3748,25 @@
 
         this.trackScrollX += (this.targetTrackScrollX - this.trackScrollX) * 0.15;
 
+        const isPhone = window.innerWidth <= 640;
+        const headlineFade = isPhone
+          ? Math.max(0, 1 - (this.trackScrollX / 160))
+          : Math.max(0, 1 - (this.trackScrollX / 300));
+
+        if (this.headlineObj) {
+          this.headlineObj.forEach(line => {
+            if (line.mesh && line.mesh.material) {
+              line.mesh.material.opacity = headlineFade;
+            }
+          });
+        }
+
         // Linear track: exactly ends at Stop 9 (Contact Us) & Stop 8 (Quote)
         this.textLines.forEach(line => {
           const relX_px = line.baseX_px - this.trackScrollX;
           line.mesh.position.x = this.pxToWorldZ8(relX_px);
           line.mesh.position.y = line.baseY_world;
+          line.mesh.position.z = -8;
         });
       }
     }
