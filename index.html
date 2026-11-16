@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>MY3 DIGITAL — High-Performance Websites &amp; Digital Experiences</title>
   <meta name="description" content="MY3 DIGITAL website portfolio. High-performance website architecture, bespoke web design, and interactive digital experiences for ambitious brands.">
-  <link rel="icon" type="image/webp" href="logo.webp">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="shortcut icon" href="favicon.ico">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -2806,8 +2809,10 @@
 
         const x = -rowGw / 2 + cw / 2 + (i % this.cols) * (cw + gapX);
         
-        // Base start Y: row 0 sits near top of screen, with smooth scrollOffset
-        const startY = (vh / 2) - (ch / 2) - 0.45;
+        // Base start Y: account for fixed navbar height so row 0 sits completely below header
+        const headerH_world = ((this.W <= 640 ? 84 : 78) / this.H) * vh;
+        const topMargin_world = this.W <= 640 ? 0.20 : 0.45;
+        const startY = (vh / 2) - headerH_world - (ch / 2) - topMargin_world;
         const baseY = startY - r * (ch + gapY);
         const y = baseY + scrollOffset;
 
@@ -2994,12 +2999,22 @@
         const run = isMobile
           ? mix(-6, 10, span(pp, 0, 0.58))
           : mix(-50, 76, span(pp, 0, 0.58));
-        if (this.l1) this.l1.style.transform = `translate3d(${run}vw,${rise * 34}vh,0)`;
-        if (this.l2) this.l2.style.transform = `translate3d(${-run}vw,${rise * 34}vh,0)`;
+        const hlA = 1 - span(pp, 0.35, 0.52);
+        if (this.l1) {
+          this.l1.style.transform = `translate3d(${run}vw,${rise * 34}vh,0)`;
+          this.l1.style.opacity = String(hlA);
+          this.l1.style.visibility = hlA <= 0.001 ? 'hidden' : 'visible';
+        }
+        if (this.l2) {
+          this.l2.style.transform = `translate3d(${-run}vw,${rise * 34}vh,0)`;
+          this.l2.style.opacity = String(hlA);
+          this.l2.style.visibility = hlA <= 0.001 ? 'hidden' : 'visible';
+        }
 
         const capA = 1 - span(pp, 0.52, 0.57);
         if (this.cap) {
           this.cap.style.opacity = String(capA);
+          this.cap.style.visibility = capA <= 0.001 ? 'hidden' : 'visible';
           this.cap.style.transform = `translate(-50%,calc(-50% + ${rise * 34}vh))`;
         }
 
@@ -3024,11 +3039,14 @@
           const gapY = this.cols === 2 ? Math.max(0.42, gapX * 2.8) : gapX * 1.6;
           const cw = (gw - gapX * (this.cols - 1)) / this.cols;
           const ch = cw / (16 / 9);
-          const startY = (vh / 2) - (ch / 2) - 0.45;
-          const r3_baseY = startY - (this.rows - 1) * (ch + gapY);
-          const r3_bottom_base = r3_baseY - ch / 2;
-          const targetBottomAtEnd = -vh / 2 + 0.55;
-          const maxScroll = Math.max(0, targetBottomAtEnd - r3_bottom_base);
+          const headerH_world = ((this.W <= 640 ? 84 : 78) / this.H) * vh;
+          const topMargin_world = this.W <= 640 ? 0.20 : 0.45;
+          const startY = (vh / 2) - headerH_world - (ch / 2) - topMargin_world;
+          const lastRow_baseY = startY - (this.rows - 1) * (ch + gapY);
+          const lastRow_bottom_base = lastRow_baseY - ch / 2;
+          const bottomPadding_world = this.W <= 640 ? 0.40 : 0.55;
+          const targetBottomAtEnd = -vh / 2 + bottomPadding_world;
+          const maxScroll = Math.max(0, targetBottomAtEnd - lastRow_bottom_base);
           const scrollQ = span(pp, 0.80, 1.0);
           scrollOffset = scrollQ * maxScroll;
         }
@@ -3199,8 +3217,134 @@
       }
 
       buildHeadlinePlanes(w, isPhone, dpr) {
-        const headlineFontSize = isPhone ? Math.min(22, Math.max(18, Math.round(w * 0.052))) : 54;
-        const subFontSize = isPhone ? 11 : 12;
+        if (!isPhone) {
+          // EXACT DESKTOP IMPLEMENTATION FROM COMMIT c853afd
+          const headlineFontSize = 54;
+          const subFontSize = 12;
+
+          const l1 = 'Transforming ambitious brands into';
+          const l2 = 'fast, high-performance and scalable';
+          const l3 = 'Websites™ that actually deliver.';
+          const lSub = 'My3 Digital® · Hyderabad & Bangalore';
+
+          const lines = [
+            { text: l1, isTrademark: false },
+            { text: l2, isTrademark: false },
+            { text: l3, isTrademark: true },
+            { text: lSub, isSub: true }
+          ];
+
+          const lineStep = headlineFontSize * 1.15;
+          const totalHeadlineH = lineStep * 2 + headlineFontSize + 28 + subFontSize;
+          const startY_px = totalHeadlineH / 2 - headlineFontSize / 2;
+
+          const headlineLineObjs = [];
+
+          lines.forEach((lineData, idx) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            const cH = (lineData.isSub ? 40 : 100);
+            canvas.width = (w + 100) * dpr;
+            canvas.height = cH * dpr;
+            ctx.scale(dpr, dpr);
+
+            let posY_px = startY_px - idx * lineStep;
+            if (lineData.isSub) {
+              posY_px = startY_px - 2 * lineStep - headlineFontSize - 28;
+            }
+
+            let northfoldOffset = null;
+
+            if (lineData.isSub) {
+              ctx.font = `500 ${subFontSize}px Geist, sans-serif`;
+              ctx.fillStyle = '#ededeb';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(lineData.text, (w + 100) / 2, cH / 2);
+
+              // Compute brand bounds for hover effect
+              const prefixW = ctx.measureText('My3 Digital® · ').width;
+              const targetW = ctx.measureText('Hyderabad & Bangalore').width;
+              const fullW = ctx.measureText(lineData.text).width;
+              const startX = ((w + 100) - fullW) / 2 + prefixW;
+              northfoldOffset = { startX, targetW, width: (w + 100) };
+            } else if (lineData.isTrademark) {
+              ctx.font = `300 ${headlineFontSize}px Newsreader, serif`;
+              ctx.fillStyle = '#ededeb';
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+
+              const wMotion = ctx.measureText('Websites').width;
+              const tmFontSize = (w <= 1024 ? 16 : 24);
+              ctx.font = `400 ${tmFontSize}px Geist, sans-serif`;
+              const wTM = ctx.measureText('™').width;
+              ctx.font = `300 ${headlineFontSize}px Newsreader, serif`;
+              const wRest = ctx.measureText(' that actually deliver.').width;
+
+              const fullW = wMotion + 8 + wTM + wRest;
+              const startX = ((w + 100) - fullW) / 2;
+
+              ctx.fillText('Websites', startX, cH / 2);
+              ctx.font = `400 ${tmFontSize}px Geist, sans-serif`;
+              ctx.fillText('™', startX + wMotion + 8, cH / 2 - 0.2 * headlineFontSize);
+              ctx.font = `300 ${headlineFontSize}px Newsreader, serif`;
+              ctx.fillText(' that actually deliver.', startX + wMotion + 8 + wTM, cH / 2);
+            } else {
+              ctx.font = `300 ${headlineFontSize}px Newsreader, serif`;
+              ctx.fillStyle = '#ededeb';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(lineData.text, (w + 100) / 2, cH / 2);
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.generateMipmaps = false;
+
+            const planeW = this.pxToWorldZ8(w + 100);
+            const planeH = this.pxToWorldZ8(cH);
+            const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+            const mesh = new THREE.Mesh(new THREE.PlaneGeometry(planeW, planeH), mat);
+
+            const baseY = this.pxToWorldZ8(posY_px);
+            mesh.position.set(0, baseY, -8);
+            this.textGroup.add(mesh);
+
+            let hoverMesh = null;
+            if (northfoldOffset) {
+              const hW = this.pxToWorldZ8(northfoldOffset.targetW + 4);
+              const hH = this.pxToWorldZ8(subFontSize + 8);
+              const hMat = new THREE.MeshBasicMaterial({ color: 0x0c0c0d, transparent: true, opacity: 0.0 });
+              hoverMesh = new THREE.Mesh(new THREE.PlaneGeometry(hW, hH), hMat);
+              const centerDiffPx = (northfoldOffset.startX + northfoldOffset.targetW / 2) - (w + 100) / 2;
+              hoverMesh.position.set(this.pxToWorldZ8(centerDiffPx), 0, 0.1);
+              mesh.add(hoverMesh);
+              this.northfoldHoverMesh = hoverMesh;
+            }
+
+            const lineObj = {
+              mesh,
+              baseX_px: 0,
+              baseY_world: baseY,
+              height_world: planeH,
+              isAboveBot: posY_px > 0,
+              orderFromCenter: Math.abs(idx - 1.5),
+              currentShiftY: 0,
+              isHeadline: true,
+              isSub: lineData.isSub,
+              hoverMesh
+            };
+            this.textLines.push(lineObj);
+            headlineLineObjs.push(lineObj);
+          });
+
+          return headlineLineObjs;
+        }
+
+        // MOBILE-OPTIMIZED IMPLEMENTATION
+        const headlineFontSize = Math.min(22, Math.max(18, Math.round(w * 0.052)));
+        const subFontSize = 11;
 
         const l1 = 'Transforming ambitious brands into';
         const l2 = 'fast, high-performance and scalable';
@@ -3214,8 +3358,8 @@
           { text: lSub, isSub: true }
         ];
 
-        const lineStep = headlineFontSize * (isPhone ? 1.25 : 1.15);
-        const totalHeadlineH = lineStep * 2 + headlineFontSize + (isPhone ? 22 : 28) + subFontSize;
+        const lineStep = headlineFontSize * 1.25;
+        const totalHeadlineH = lineStep * 2 + headlineFontSize + 22 + subFontSize;
         const startY_px = totalHeadlineH / 2 - headlineFontSize / 2;
 
         const headlineLineObjs = [];
@@ -3223,15 +3367,15 @@
         lines.forEach((lineData, idx) => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          const cH = lineData.isSub ? (isPhone ? 32 : 40) : (isPhone ? Math.round(headlineFontSize * 1.5) : 100);
-          const cW = w + (isPhone ? 20 : 100);
+          const cH = lineData.isSub ? 32 : Math.round(headlineFontSize * 1.5);
+          const cW = w + 20;
           canvas.width = cW * dpr;
           canvas.height = cH * dpr;
           ctx.scale(dpr, dpr);
 
           let posY_px = startY_px - idx * lineStep;
           if (lineData.isSub) {
-            posY_px = startY_px - 2 * lineStep - headlineFontSize - (isPhone ? 20 : 28);
+            posY_px = startY_px - 2 * lineStep - headlineFontSize - 20;
           }
 
           let northfoldOffset = null;
@@ -3256,20 +3400,20 @@
             ctx.textBaseline = 'middle';
 
             const wMotion = ctx.measureText('Websites').width;
-            const tmFontSize = isPhone ? Math.round(headlineFontSize * 0.45) : (w <= 1024 ? 16 : 24);
+            const tmFontSize = Math.round(headlineFontSize * 0.45);
             ctx.font = `400 ${tmFontSize}px Geist, sans-serif`;
             const wTM = ctx.measureText('™').width;
             ctx.font = `300 ${headlineFontSize}px Newsreader, serif`;
             const wRest = ctx.measureText(' that actually deliver.').width;
 
-            const fullW = wMotion + (isPhone ? 4 : 8) + wTM + wRest;
+            const fullW = wMotion + 4 + wTM + wRest;
             const startX = (cW - fullW) / 2;
 
             ctx.fillText('Websites', startX, cH / 2);
             ctx.font = `400 ${tmFontSize}px Geist, sans-serif`;
-            ctx.fillText('™', startX + wMotion + (isPhone ? 4 : 8), cH / 2 - 0.2 * headlineFontSize);
+            ctx.fillText('™', startX + wMotion + 4, cH / 2 - 0.2 * headlineFontSize);
             ctx.font = `300 ${headlineFontSize}px Newsreader, serif`;
-            ctx.fillText(' that actually deliver.', startX + wMotion + (isPhone ? 4 : 8) + wTM, cH / 2);
+            ctx.fillText(' that actually deliver.', startX + wMotion + 4 + wTM, cH / 2);
           } else {
             ctx.font = `300 ${headlineFontSize}px Newsreader, serif`;
             ctx.fillStyle = '#ededeb';
@@ -3294,7 +3438,6 @@
 
           let hoverMesh = null;
           if (northfoldOffset) {
-            // Hover plane for subtitle
             const hW = this.pxToWorldZ8(northfoldOffset.targetW + 4);
             const hH = this.pxToWorldZ8(subFontSize + 8);
             const hMat = new THREE.MeshBasicMaterial({ color: 0x0c0c0d, transparent: true, opacity: 0.0 });
@@ -3325,6 +3468,261 @@
       }
 
       buildTenStops(w, isPhone, dpr) {
+        if (!isPhone) {
+          // EXACT DESKTOP IMPLEMENTATION FROM COMMIT c853afd
+          const stopsData = [
+            {
+              type: 'para',
+              top: true,
+              heading: 'Who We Are',
+              lines: [
+                'A founder-led website & digital studio',
+                'built from real experience — not just theory,',
+                'crafting websites that drive real business growth.'
+              ],
+              font: '300 18px Newsreader'
+            },
+            {
+              type: 'list',
+              top: false,
+              heading: 'Strategic Pillars',
+              lines: [
+                'High-Performance Web Architecture',
+                'Responsive UI & Modern UX',
+                'Custom CMS & Scalable Systems',
+                'Enterprise-Grade Security & Speed'
+              ],
+              font: '400 15px Newsreader'
+            },
+            {
+              type: 'chapter',
+              top: true,
+              heading: 'The Origin  ·  The Gap',
+              num: 'I',
+              lines: [
+                'Generic templates looked flashy but failed to convert,',
+                'slow load times hurt real business outcomes.',
+                'That realization created My3 Digital.'
+              ],
+              font: '300 16px Newsreader'
+            },
+            {
+              type: 'quote',
+              top: false,
+              quote: '“A website should feel fast, purposeful, and genuinely effective.”',
+              author: '— Pravallika Pullepu, Founder'
+            },
+            {
+              type: 'stats',
+              top: true,
+              heading: 'Enterprise Impact',
+              lines: [
+                '200+  Enterprise Websites',
+                '97%  Client Retention',
+                '1,500Cr+  Client Value Generated',
+                '24/7  Global Web Support'
+              ],
+              font: '400 15px Geist'
+            },
+            {
+              type: 'para',
+              top: false,
+              heading: 'Our Mission',
+              lines: [
+                'Empowering global businesses with digital excellence',
+                'through bespoke web platforms, modern technology,',
+                'and scalable, high-converting websites.'
+              ],
+              font: '300 18px Newsreader'
+            },
+            {
+              type: 'chapter',
+              top: true,
+              heading: 'Our Philosophy  ·  Clarity',
+              num: 'II',
+              lines: [
+                'We don’t use bloatware or hide behind jargon.',
+                'We work closely with clients to build',
+                'websites that actually make a difference.'
+              ],
+              font: '300 16px Newsreader'
+            },
+            {
+              type: 'list',
+              top: false,
+              heading: 'Core Values',
+              lines: [
+                'Craftsmanship & Integrity',
+                'Interactive Web Innovation',
+                'Performance & ROI-Driven',
+                'Strategic Digital Partnership'
+              ],
+              font: '400 15px Newsreader'
+            },
+            {
+              type: 'quote',
+              top: true,
+              quote: [
+                '“We function as an extension of your team,',
+                'built for mutual success.”'
+              ],
+              author: '— My3 Digital Standard'
+            },
+            {
+              type: 'links',
+              top: false,
+              heading: 'Contact Us',
+              lines: [
+                { text: 'info@my3digital.com →', link: 'mailto:info@my3digital.com' },
+                { text: '+91 7396426644 / +91 7780196804 →', link: 'tel:+917396426644' },
+                { text: 'Start Website Project →', link: 'https://my3digital.com/pages/contact/' },
+                { text: 'Asian Suncity, Kondapur, Hyderabad', link: null, mute: true }
+              ]
+            }
+          ];
+
+          let currX_px = w / 2 + 200;
+          const stops = [];
+
+          stopsData.forEach((sd, stopIdx) => {
+            const isTop = sd.top;
+            const blockW_px = 400;
+            const stopObj = {
+              index: stopIdx,
+              baseX: currX_px,
+              widthPx: blockW_px,
+              lines: []
+            };
+
+            const baseOffsetFromCenter = 60;
+
+            if (sd.type === 'quote') {
+              const qFontSize = 22;
+              const qLines = Array.isArray(sd.quote) ? sd.quote : [sd.quote];
+              const lineH = qFontSize * 1.35;
+              const qH_px = Math.round(qLines.length * lineH + 8);
+
+              const qCanvas = document.createElement('canvas');
+              const qCtx = qCanvas.getContext('2d', { willReadFrequently: true });
+              qCanvas.width = 680 * dpr;
+              qCanvas.height = qH_px * dpr;
+              qCtx.scale(dpr, dpr);
+              qCtx.font = `italic 300 ${qFontSize}px Newsreader, serif`;
+              qCtx.fillStyle = '#ededeb';
+              qCtx.textAlign = 'left';
+              qCtx.textBaseline = 'top';
+
+              qLines.forEach((ql, qi) => {
+                qCtx.fillText(ql, 0, qi * lineH + 4);
+              });
+
+              const qTex = new THREE.CanvasTexture(qCanvas);
+              const qMesh = new THREE.Mesh(
+                new THREE.PlaneGeometry(this.pxToWorldZ8(680), this.pxToWorldZ8(qH_px)),
+                new THREE.MeshBasicMaterial({ map: qTex, transparent: true })
+              );
+              this.textGroup.add(qMesh);
+
+              const authCanvas = document.createElement('canvas');
+              const authCtx = authCanvas.getContext('2d', { willReadFrequently: true });
+              authCanvas.width = 380 * dpr;
+              authCanvas.height = 30 * dpr;
+              authCtx.scale(dpr, dpr);
+              authCtx.font = '500 12px Geist, sans-serif';
+              authCtx.fillStyle = '#8a8a88';
+              authCtx.textAlign = 'left';
+              authCtx.textBaseline = 'top';
+              authCtx.fillText(sd.author, 0, 0);
+
+              const authTex = new THREE.CanvasTexture(authCanvas);
+              const authMesh = new THREE.Mesh(
+                new THREE.PlaneGeometry(this.pxToWorldZ8(380), this.pxToWorldZ8(30)),
+                new THREE.MeshBasicMaterial({ map: authTex, transparent: true })
+              );
+              this.textGroup.add(authMesh);
+
+              // Place quote close above the author attribution (-- texts)
+              const yAuth = isTop ? (baseOffsetFromCenter + 10) : -(baseOffsetFromCenter + 55);
+              const yQuote = yAuth + 26 + qH_px / 2;
+
+              const lObj1 = { mesh: qMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yQuote), height_world: this.pxToWorldZ8(qH_px), isAboveBot: isTop, orderFromCenter: 1, currentShiftY: 0 };
+              const lObj2 = { mesh: authMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yAuth), height_world: this.pxToWorldZ8(30), isAboveBot: isTop, orderFromCenter: 2, currentShiftY: 0 };
+              this.textLines.push(lObj1, lObj2);
+              stopObj.lines.push(lObj1, lObj2);
+
+            } else {
+              const hCanvas = document.createElement('canvas');
+              const hCtx = hCanvas.getContext('2d', { willReadFrequently: true });
+              hCanvas.width = 440 * dpr;
+              hCanvas.height = 24 * dpr;
+              hCtx.scale(dpr, dpr);
+              hCtx.font = '500 12px Geist, sans-serif';
+              hCtx.fillStyle = '#8a8a88';
+              hCtx.textAlign = 'left';
+              hCtx.textBaseline = 'top';
+              hCtx.fillText(sd.heading, 0, 0);
+
+              const hTex = new THREE.CanvasTexture(hCanvas);
+              const hMesh = new THREE.Mesh(
+                new THREE.PlaneGeometry(this.pxToWorldZ8(440), this.pxToWorldZ8(24)),
+                new THREE.MeshBasicMaterial({ map: hTex, transparent: true })
+              );
+              this.textGroup.add(hMesh);
+
+              const headY_px = isTop ? (baseOffsetFromCenter + 90) : -(baseOffsetFromCenter + 10);
+              const headLineObj = { mesh: hMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(headY_px), height_world: this.pxToWorldZ8(24), isAboveBot: isTop, orderFromCenter: 0, currentShiftY: 0 };
+              this.textLines.push(headLineObj);
+              stopObj.lines.push(headLineObj);
+
+              const lineItems = sd.lines || [];
+              lineItems.forEach((li, lIdx) => {
+                const textStr = typeof li === 'string' ? li : li.text;
+                const isMute = typeof li === 'object' && li.mute;
+                const link = typeof li === 'object' ? li.link : null;
+
+                const c = document.createElement('canvas');
+                const cx = c.getContext('2d', { willReadFrequently: true });
+                c.width = 540 * dpr;
+                c.height = 36 * dpr;
+                cx.scale(dpr, dpr);
+                cx.font = sd.font ? `${sd.font}, serif` : '300 18px Newsreader, serif';
+                cx.fillStyle = isMute ? '#8a8a88' : '#ededeb';
+                cx.textAlign = 'left';
+                cx.textBaseline = 'top';
+                cx.fillText(textStr, 0, 0);
+
+                const tex = new THREE.CanvasTexture(c);
+                const m = new THREE.Mesh(
+                  new THREE.PlaneGeometry(this.pxToWorldZ8(540), this.pxToWorldZ8(36)),
+                  new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+                );
+                this.textGroup.add(m);
+
+                const lineY_px = isTop ? (baseOffsetFromCenter + 66 - lIdx * 25) : -(baseOffsetFromCenter + 35 + lIdx * 25);
+                const lineObj = {
+                  mesh: m,
+                  baseX_px: currX_px,
+                  baseY_world: this.pxToWorldZ8(lineY_px),
+                  height_world: this.pxToWorldZ8(36),
+                  isAboveBot: isTop,
+                  orderFromCenter: lIdx + 1,
+                  currentShiftY: 0,
+                  link
+                };
+                this.textLines.push(lineObj);
+                stopObj.lines.push(lineObj);
+              });
+            }
+
+            stops.push(stopObj);
+            const advance_px = Math.max(0.62 * blockW_px, 240) + 100;
+            currX_px += advance_px;
+          });
+
+          return stops;
+        }
+
+        // MOBILE-OPTIMIZED IMPLEMENTATION
         const stopsData = [
           {
             type: 'para',
@@ -3364,9 +3762,10 @@
           {
             type: 'quote',
             top: false,
-            quote: isPhone
-              ? ['“A website should feel fast, purposeful,', 'and genuinely effective.”']
-              : '“A website should feel fast, purposeful, and genuinely effective.”',
+            quote: [
+              '“A website should feel fast, purposeful,',
+              'and genuinely effective.”'
+            ],
             author: '— Pravallika Pullepu, Founder'
           },
           {
@@ -3438,8 +3837,8 @@
           }
         ];
 
-        const blockW_px = isPhone ? Math.min(w - 48, 310) : 400;
-        let currX_px = isPhone ? (w + 40) : (w / 2 + 200);
+        const blockW_px = Math.min(w - 48, 310);
+        let currX_px = w + 40;
         const stops = [];
 
         stopsData.forEach((sd, stopIdx) => {
@@ -3451,15 +3850,15 @@
             lines: []
           };
 
-          const baseOffsetFromCenter = isPhone ? 48 : 60;
+          const baseOffsetFromCenter = 48;
 
           if (sd.type === 'quote') {
-            const qFontSize = isPhone ? 16 : 22;
+            const qFontSize = 16;
             const qLines = Array.isArray(sd.quote) ? sd.quote : [sd.quote];
             const lineH = Math.round(qFontSize * 1.35);
             const qH_px = Math.round(qLines.length * lineH + 10);
-            const qW_px = isPhone ? blockW_px : 680;
-            const authW_px = isPhone ? blockW_px : 380;
+            const qW_px = blockW_px;
+            const authW_px = blockW_px;
 
             const qCanvas = document.createElement('canvas');
             const qCtx = qCanvas.getContext('2d', { willReadFrequently: true });
@@ -3485,11 +3884,11 @@
 
             const authCanvas = document.createElement('canvas');
             const authCtx = authCanvas.getContext('2d', { willReadFrequently: true });
-            const authH_px = isPhone ? 22 : 30;
+            const authH_px = 22;
             authCanvas.width = authW_px * dpr;
             authCanvas.height = authH_px * dpr;
             authCtx.scale(dpr, dpr);
-            authCtx.font = `${isPhone ? '400 11px' : '500 12px'} Geist, sans-serif`;
+            authCtx.font = '400 11px Geist, sans-serif';
             authCtx.fillStyle = '#8a8a88';
             authCtx.textAlign = 'left';
             authCtx.textBaseline = 'top';
@@ -3504,8 +3903,8 @@
             this.textGroup.add(authMesh);
 
             // Place quote close above the author attribution (-- texts)
-            const yAuth = isTop ? (baseOffsetFromCenter + 10) : -(baseOffsetFromCenter + (isPhone ? 40 : 55));
-            const yQuote = yAuth + (isPhone ? 20 : 26) + qH_px / 2;
+            const yAuth = isTop ? (baseOffsetFromCenter + 10) : -(baseOffsetFromCenter + 40);
+            const yQuote = yAuth + 20 + qH_px / 2;
 
             const lObj1 = { mesh: qMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yQuote), height_world: this.pxToWorldZ8(qH_px), isAboveBot: isTop, orderFromCenter: 1, currentShiftY: 0 };
             const lObj2 = { mesh: authMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(yAuth), height_world: this.pxToWorldZ8(authH_px), isAboveBot: isTop, orderFromCenter: 2, currentShiftY: 0 };
@@ -3513,16 +3912,16 @@
             stopObj.lines.push(lObj1, lObj2);
 
           } else {
-            const hW_px = isPhone ? blockW_px : 440;
-            const lineW_px = isPhone ? blockW_px : 540;
+            const hW_px = blockW_px;
+            const lineW_px = blockW_px;
 
             const hCanvas = document.createElement('canvas');
             const hCtx = hCanvas.getContext('2d', { willReadFrequently: true });
-            const hH_px = isPhone ? 20 : 24;
+            const hH_px = 20;
             hCanvas.width = hW_px * dpr;
             hCanvas.height = hH_px * dpr;
             hCtx.scale(dpr, dpr);
-            hCtx.font = `${isPhone ? '400 11px' : '500 12px'} Geist, sans-serif`;
+            hCtx.font = '400 11px Geist, sans-serif';
             hCtx.fillStyle = '#8a8a88';
             hCtx.textAlign = 'left';
             hCtx.textBaseline = 'top';
@@ -3536,15 +3935,15 @@
             hMesh.position.z = -8;
             this.textGroup.add(hMesh);
 
-            const headY_px = isTop ? (baseOffsetFromCenter + (isPhone ? 75 : 90)) : -(baseOffsetFromCenter + 10);
+            const headY_px = isTop ? (baseOffsetFromCenter + 75) : -(baseOffsetFromCenter + 10);
             const headLineObj = { mesh: hMesh, baseX_px: currX_px, baseY_world: this.pxToWorldZ8(headY_px), height_world: this.pxToWorldZ8(hH_px), isAboveBot: isTop, orderFromCenter: 0, currentShiftY: 0 };
             this.textLines.push(headLineObj);
             stopObj.lines.push(headLineObj);
 
             const lineItems = sd.lines || [];
-            const bodyStep = isPhone ? 20 : 25;
-            const lineH_px = isPhone ? 26 : 36;
-            const bodyBaseTop = isTop ? (baseOffsetFromCenter + (isPhone ? 54 : 66)) : -(baseOffsetFromCenter + (isPhone ? 28 : 35));
+            const bodyStep = 20;
+            const lineH_px = 26;
+            const bodyBaseTop = isTop ? (baseOffsetFromCenter + 54) : -(baseOffsetFromCenter + 28);
 
             lineItems.forEach((li, lIdx) => {
               const textStr = typeof li === 'string' ? li : li.text;
@@ -3557,20 +3956,16 @@
               c.height = lineH_px * dpr;
               cx.scale(dpr, dpr);
 
-              if (isPhone) {
-                if (sd.type === 'list') {
-                  cx.font = '400 13px Newsreader, serif';
-                } else if (sd.type === 'stats') {
-                  cx.font = '400 13px Geist, sans-serif';
-                } else if (sd.type === 'chapter') {
-                  cx.font = '300 13.5px Newsreader, serif';
-                } else if (sd.type === 'links') {
-                  cx.font = '400 13px Geist, sans-serif';
-                } else {
-                  cx.font = '300 14px Newsreader, serif';
-                }
+              if (sd.type === 'list') {
+                cx.font = '400 13px Newsreader, serif';
+              } else if (sd.type === 'stats') {
+                cx.font = '400 13px Geist, sans-serif';
+              } else if (sd.type === 'chapter') {
+                cx.font = '300 13.5px Newsreader, serif';
+              } else if (sd.type === 'links') {
+                cx.font = '400 13px Geist, sans-serif';
               } else {
-                cx.font = sd.font ? `${sd.font}, serif` : '300 18px Newsreader, serif';
+                cx.font = '300 14px Newsreader, serif';
               }
               cx.fillStyle = isMute ? '#8a8a88' : '#ededeb';
               cx.textAlign = 'left';
@@ -3602,10 +3997,7 @@
           }
 
           stops.push(stopObj);
-
-          const advance_px = isPhone
-            ? (blockW_px + 70)
-            : (Math.max(0.62 * blockW_px, 240) + 100);
+          const advance_px = blockW_px + 70;
           currX_px += advance_px;
         });
 
@@ -3749,16 +4141,23 @@
         this.trackScrollX += (this.targetTrackScrollX - this.trackScrollX) * 0.15;
 
         const isPhone = window.innerWidth <= 640;
-        const headlineFade = isPhone
-          ? Math.max(0, 1 - (this.trackScrollX / 160))
-          : Math.max(0, 1 - (this.trackScrollX / 300));
-
-        if (this.headlineObj) {
-          this.headlineObj.forEach(line => {
-            if (line.mesh && line.mesh.material) {
-              line.mesh.material.opacity = headlineFade;
-            }
-          });
+        if (isPhone) {
+          const headlineFade = Math.max(0, 1 - (this.trackScrollX / 160));
+          if (this.headlineObj) {
+            this.headlineObj.forEach(line => {
+              if (line.mesh && line.mesh.material) {
+                line.mesh.material.opacity = headlineFade;
+              }
+            });
+          }
+        } else {
+          if (this.headlineObj) {
+            this.headlineObj.forEach(line => {
+              if (line.mesh && line.mesh.material) {
+                line.mesh.material.opacity = 1.0;
+              }
+            });
+          }
         }
 
         // Linear track: exactly ends at Stop 9 (Contact Us) & Stop 8 (Quote)
@@ -3766,7 +4165,9 @@
           const relX_px = line.baseX_px - this.trackScrollX;
           line.mesh.position.x = this.pxToWorldZ8(relX_px);
           line.mesh.position.y = line.baseY_world;
-          line.mesh.position.z = -8;
+          if (isPhone) {
+            line.mesh.position.z = -8;
+          }
         });
       }
     }
